@@ -169,7 +169,6 @@ var BirdEntity = me.Entity.extend({
 
 });
 
-
 var PipeEntity = me.Entity.extend({
     init: function(x, y) {
         var settings = {};
@@ -208,8 +207,9 @@ var PipeGenerator = me.Renderable.extend({
         this._super(me.Renderable, 'init', [0, me.game.viewport.width, me.game.viewport.height]);
         this.alwaysUpdate = true;
         this.generate = 0;
-        this.pipeFrequency = 92;
-        this.pipeHoleSize = 1240;
+        this.pipeFrequency = 200;
+        // this.pipeHoleSize = 1240;
+        this.pipeHoleSize = 1540;
         this.posX = me.game.viewport.width;
     },
 
@@ -248,7 +248,7 @@ var HitEntity = me.Entity.extend({
         this.alwaysUpdate = true;
         this.body.gravity = 0;
         this.updateTime = false;
-        this.renderable.alpha = 0;
+        this.renderable.alpha = 1;
         this.body.accel.set(-5, 0);
         this.body.addShape(new me.Rect(0, 0, settings.width - 30, settings.height - 30));
         this.type = 'hit';
