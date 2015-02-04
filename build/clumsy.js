@@ -1,3 +1,6 @@
+var GAME_SPEED = 0;
+var CHAR_X = 0;
+
 var game = {
     data: {
         score : 0,
@@ -34,6 +37,7 @@ var game = {
         me.input.bindKey(me.input.KEY.M, "mute", true);
         me.input.bindPointer(me.input.KEY.SPACE);
 
+        me.pool.register("capitain", CapitainEntity);
         me.pool.register("clumsy", BirdEntity);
         me.pool.register("pipe", PipeEntity, true);
         me.pool.register("hit", HitEntity, true);
@@ -48,6 +52,8 @@ var game = {
 game.resources = [
     // images
     {name: "bg", type:"image", src: "data/img/bg.png"},
+    {name: "spider", type:"image", src: "data/img/spider.png"},
+    {name: "capitain", type:"image", src: "data/img/capitain.png"},
     {name: "clumsy", type:"image", src: "data/img/clumsy.png"},
     {name: "pipe", type:"image", src: "data/img/pipe.png"},
     {name: "logo", type:"image", src: "data/img/logo.png"},
@@ -65,6 +71,126 @@ game.resources = [
     {name: "lose", type: "audio", src: "data/sfx/"},
     {name: "wing", type: "audio", src: "data/sfx/"},
 ];
+/**
+ * ---------------------------------------------------------------------------------
+ * Character
+ */
+var CapitainEntity = me.Entity.extend({
+    init: function(x, y) {
+        var settings = {};
+        settings.image = me.loader.getImage('spider');
+        settings.width = 155;
+        settings.height = 100;
+        settings.spritewidth = 155;
+        settings.spriteheight= 100;
+
+
+        this._super(me.Entity, 'init', [x, y, settings]);
+        this.alwaysUpdate = true;
+        this.body.gravity = 0.2;
+        this.gravityForce = 0.01;
+        // this.maxAngleRotation = Number.prototype.degToRad(30);
+        // this.maxAngleRotationDown = Number.prototype.degToRad(90);
+        this.renderable.addAnimation("flying", [0, 1, 2, 3, 4, 5, 6, 7]);
+        this.renderable.addAnimation("idle", [7]);
+        this.renderable.setCurrentAnimation("flying");
+        this.renderable.anchorPoint = new me.Vector2d(0.1, 0.5);
+
+        // manually add a rectangular collision shape
+        this.body.addShape(new me.Rect(10, 10, 95, 80));
+
+        // a tween object for the flying physic effect
+        this.flyTween = new me.Tween(this.pos);
+        this.flyTween.easing(me.Tween.Easing.Exponential.InOut);
+
+        // end animation tween
+        this.endTween = null;
+
+        // collision shape
+        this.collided = false;
+
+        CHAR_X = x;
+    },
+
+    update: function(dt) {
+        // mechanics
+
+        if (!game.data.start) {
+            return this._super(me.Entity, 'update', [dt]);
+        }
+
+        this.pos.x = CHAR_X;
+
+        if (me.input.isKeyPressed('fly')) {
+            me.audio.play('wing');
+            this.gravityForce = 0.02;
+            var currentPos = this.pos.y;
+            // stop the previous tweens
+            this.flyTween.stop();
+            this.flyTween.to({y: currentPos - 72}, 50);
+            this.flyTween.start();
+            this.renderable.angle = -this.maxAngleRotation;
+        } else {
+            this.gravityForce += 0.2;
+            this.pos.y += me.timer.tick * this.gravityForce;
+            this.renderable.angle += Number.prototype.degToRad(0.5) * this.gravityForce;
+            if (this.renderable.angle > this.maxAngleRotationDown)
+                this.renderable.angle = this.maxAngleRotationDown;
+        }
+        this.updateBounds();
+
+        var hitSky = -120; // bird height + 20px
+        if (this.pos.y <= hitSky || this.collided) {
+            game.data.start = false;
+            me.audio.play("lose");
+            this.endAnimation();
+            return false;
+        }
+
+        me.collision.check(this);
+
+        this._super(me.Entity, 'update', [dt]);
+        return true;
+    },
+
+    onCollision: function(response) {
+        var obj = response.b;
+        if (obj.type === 'pipe' || obj.type === 'ground') {
+            me.device.vibrate(500);
+            this.collided = true;
+            GAME_SPEED = 0;
+        }
+
+        // remove the hit box
+        if (obj.type === 'hit') {
+            me.game.world.removeChildNow(obj);
+            game.data.steps++;
+            me.audio.play('hit');
+        }
+    },
+
+    endAnimation: function() {
+        me.game.viewport.fadeOut("#fff", 100);
+        var currentPos = this.renderable.pos.y;
+        this.endTween = new me.Tween(this.renderable.pos);
+        this.endTween.easing(me.Tween.Easing.Exponential.InOut);
+
+        this.flyTween.stop();
+        this.renderable.angle = this.maxAngleRotationDown;
+        var finalPos = me.video.renderer.getHeight() - this.renderable.width/2 - 96;
+        this.endTween
+            .to({y: currentPos}, 1000)
+            .to({y: finalPos}, 1000)
+            .onComplete(function() {
+                me.state.change(me.state.GAME_OVER);
+            });
+        this.endTween.start();
+    }
+});
+/**
+ * ---------------------------------------------------------------------------------
+ * Character
+ */
 var BirdEntity = me.Entity.extend({
     init: function(x, y) {
         var settings = {};
@@ -73,6 +199,7 @@ var BirdEntity = me.Entity.extend({
         settings.height = 60;
         settings.spritewidth = 85;
         settings.spriteheight= 60;
+
 
         this._super(me.Entity, 'init', [x, y, settings]);
         this.alwaysUpdate = true;
@@ -96,6 +223,8 @@ var BirdEntity = me.Entity.extend({
 
         // collision shape
         this.collided = false;
+
+        CHAR_X = x;
     },
 
     update: function(dt) {
@@ -104,6 +233,9 @@ var BirdEntity = me.Entity.extend({
         if (!game.data.start) {
             return this._super(me.Entity, 'update', [dt]);
         }
+
+        this.pos.x = CHAR_X;
+
         if (me.input.isKeyPressed('fly')) {
             me.audio.play('wing');
             this.gravityForce = 0.02;
@@ -131,6 +263,7 @@ var BirdEntity = me.Entity.extend({
         }
 
         me.collision.check(this);
+
         this._super(me.Entity, 'update', [dt]);
         return true;
     },
@@ -140,7 +273,9 @@ var BirdEntity = me.Entity.extend({
         if (obj.type === 'pipe' || obj.type === 'ground') {
             me.device.vibrate(500);
             this.collided = true;
+            GAME_SPEED = 0;
         }
+
         // remove the hit box
         if (obj.type === 'hit') {
             me.game.world.removeChildNow(obj);
@@ -166,9 +301,12 @@ var BirdEntity = me.Entity.extend({
             });
         this.endTween.start();
     }
-
 });
 
+/**
+ * ---------------------------------------------------------------------------------
+ * Pipe
+ */
 var PipeEntity = me.Entity.extend({
     init: function(x, y) {
         var settings = {};
@@ -182,11 +320,14 @@ var PipeEntity = me.Entity.extend({
         this.alwaysUpdate = true;
         this.body.addShape(new me.Rect(0 ,0, settings.width, settings.height));
         this.body.gravity = 0;
-        this.body.vel.set(-5, 0);
+        this.body.vel.set(GAME_SPEED, 0);
+        // this.body.vel.set(-20, 0);
         this.type = 'pipe';
     },
 
     update: function(dt) {
+        this.body.vel.set(GAME_SPEED, 0);
+
         // mechanics
         if (!game.data.start) {
             return this._super(me.Entity, 'update', [dt]);
@@ -197,24 +338,29 @@ var PipeEntity = me.Entity.extend({
         }
         this.updateBounds();
         this._super(me.Entity, 'update', [dt]);
-        return true;
-    },
 
+        return true;
+    }
 });
 
+/**
+ * ---------------------------------------------------------------------------------
+ * Pipe factory
+ */
 var PipeGenerator = me.Renderable.extend({
     init: function() {
         this._super(me.Renderable, 'init', [0, me.game.viewport.width, me.game.viewport.height]);
         this.alwaysUpdate = true;
         this.generate = 0;
-        this.pipeFrequency = 200;
+        this.pipeFrequency = 92;
         // this.pipeHoleSize = 1240;
-        this.pipeHoleSize = 1540;
+        this.pipeHoleSize = 1340;
         this.posX = me.game.viewport.width;
     },
 
     update: function(dt) {
-        if (this.generate++ % this.pipeFrequency == 0) {
+        if ((this.generate++ % this.pipeFrequency) == 0) {
+
             var posY = Number.prototype.random(
                     me.video.renderer.getHeight() - 100,
                     200
@@ -223,38 +369,64 @@ var PipeGenerator = me.Renderable.extend({
             var pipe1 = new me.pool.pull('pipe', this.posX, posY);
             var pipe2 = new me.pool.pull('pipe', this.posX, posY2);
             var hitPos = posY - 100;
-            var hit = new me.pool.pull("hit", this.posX, hitPos);
+            // var hit = new me.pool.pull("hit", this.posX, hitPos);
+            var hit = new me.pool.pull("hit", this.posX, 0);
+
+            if(game.data.steps >= 50){
+                pipe1.body.collisionType = me.collision.types.ENEMY_OBJECT;
+                pipe2.body.collisionType = me.collision.types.ENEMY_OBJECT;
+            } else if(game.data.steps >= 1){
+                pipe1.body.collisionType = me.collision.types.NO_OBJECT;
+                pipe2.body.collisionType = me.collision.types.NO_OBJECT;
+            }
+
+
             pipe1.renderable.flipY(true);
             me.game.world.addChild(pipe1, 10);
             me.game.world.addChild(pipe2, 10);
             me.game.world.addChild(hit, 11);
-        }
-        this._super(me.Entity, "update", [dt]);
-        return true;
-    },
 
+            GAME_SPEED = ( Math.ceil(game.data.steps / 4) * -1) - 6;
+        }
+
+        this._super(me.Entity, "update", [dt]);
+
+        return true;
+    }
 });
 
+/**
+ * ---------------------------------------------------------------------------------
+ * Pipe cross hit
+ */
 var HitEntity = me.Entity.extend({
     init: function(x, y) {
         var settings = {};
         settings.image = this.image = me.loader.getImage('hit');
-        settings.width = 148;
-        settings.height= 60;
-        settings.spritewidth = 148;
-        settings.spriteheight= 60;
+        // settings.width = 148;
+        // settings.height= 60;
+        // settings.spritewidth = 148;
+        // settings.spriteheight= 60;
+        settings.width = 10;
+        settings.height = 600;
+        settings.spritewidth = 10;
+        settings.spriteheight = 600;
 
         this._super(me.Entity, 'init', [x, y, settings]);
         this.alwaysUpdate = true;
         this.body.gravity = 0;
         this.updateTime = false;
-        this.renderable.alpha = 1;
-        this.body.accel.set(-5, 0);
-        this.body.addShape(new me.Rect(0, 0, settings.width - 30, settings.height - 30));
+        this.renderable.alpha = .2;
+        this.body.accel.set(GAME_SPEED, 0);
+        // this.body.vel.set(-20, 0);
+        // this.body.addShape(new me.Rect(0, 0, settings.width - 30, settings.height - 30));
+        this.body.addShape(new me.Rect(0, 0, settings.width, settings.height));
         this.type = 'hit';
     },
 
     update: function(dt) {
+        this.body.accel.set(GAME_SPEED, 0);
+
         // mechanics
         this.pos.add(this.body.accel);
         if (this.pos.x < -this.image.width) {
@@ -263,10 +435,13 @@ var HitEntity = me.Entity.extend({
         this.updateBounds();
         this._super(me.Entity, "update", [dt]);
         return true;
-    },
-
+    }
 });
 
+/**
+ * ---------------------------------------------------------------------------------
+ * Ground
+ */
 var Ground = me.Entity.extend({
     init: function(x, y) {
         var settings = {};
@@ -276,12 +451,15 @@ var Ground = me.Entity.extend({
         this._super(me.Entity, 'init', [x, y, settings]);
         this.alwaysUpdate = true;
         this.body.gravity = 0;
-        this.body.vel.set(-4, 0);
+        this.body.vel.set(GAME_SPEED, 0);
         this.body.addShape(new me.Rect(0 ,0, settings.width, settings.height));
         this.type = 'ground';
     },
 
     update: function(dt) {
+        // console.log(GAME_SPEED);
+        this.body.vel.set(GAME_SPEED, 0);
+
         // mechanics
         this.pos.add(this.body.vel);
         if (this.pos.x < -this.renderable.width) {
@@ -289,10 +467,8 @@ var Ground = me.Entity.extend({
         }
         this.updateBounds();
         return this._super(me.Entity, 'update', [dt]);
-    },
-
+    }
 });
-
 game.HUD = game.HUD || {};
 
 game.HUD.Container = me.Container.extend({
@@ -341,7 +517,6 @@ game.HUD.ScoreItem = me.Renderable.extend({
         if (game.data.start && me.state.isCurrent(me.state.PLAY))
             this.stepsFont.draw(context, game.data.steps, me.video.renderer.getWidth()/2, 10);
     }
-
 });
 
 var BackgroundLayer = me.ImageLayer.extend({
@@ -417,6 +592,7 @@ var Tweet = me.GUI_Object.extend({
 
 game.TitleScreen = me.ScreenObject.extend({
     init: function(){
+        console.log('TitleScreen : init');
         this._super(me.ScreenObject, 'init');
         this.font = null;
         this.ground1 = null;
@@ -425,6 +601,7 @@ game.TitleScreen = me.ScreenObject.extend({
     },
 
     onResetEvent: function() {
+        console.log('TitleScreen : onResetEvent');
         me.audio.stop("theme");
         game.data.newHiScore = false;
 
@@ -479,6 +656,7 @@ game.TitleScreen = me.ScreenObject.extend({
     },
 
     onDestroyEvent: function() {
+        console.log('TitleScreen : onDestroyEvent');
         // unregister the event
         me.event.unsubscribe(this.handler);
         me.input.unbindKey(me.input.KEY.ENTER);
@@ -493,6 +671,7 @@ game.TitleScreen = me.ScreenObject.extend({
 
 game.PlayScreen = me.ScreenObject.extend({
     init: function() {
+        console.log('PlayScreen : init');
         me.audio.play("theme", true);
         // lower audio volume on firefox browser
         var vol = me.device.ua.contains("Firefox") ? 0.3 : 0.5;
@@ -501,6 +680,9 @@ game.PlayScreen = me.ScreenObject.extend({
     },
 
     onResetEvent: function() {
+        console.log('PlayScreen : onResetEvent');
+        GAME_SPEED = 0;
+
         me.game.reset();
         me.audio.stop("theme");
         if (!game.data.muted){
@@ -524,7 +706,7 @@ game.PlayScreen = me.ScreenObject.extend({
         this.HUD = new game.HUD.Container();
         me.game.world.addChild(this.HUD);
 
-        this.bird = me.pool.pull("clumsy", 60, me.game.viewport.height/2 - 100);
+        this.bird = me.pool.pull("capitain", 60, me.game.viewport.height/2 - 100);
         me.game.world.addChild(this.bird, 10);
 
         //inputs
@@ -548,6 +730,7 @@ game.PlayScreen = me.ScreenObject.extend({
     },
 
     onDestroyEvent: function() {
+        console.log('PlayScreen : onDestroyEvent');
         me.audio.stopTrack('theme');
         // free the stored instance
         this.HUD = null;
@@ -561,11 +744,15 @@ game.PlayScreen = me.ScreenObject.extend({
 
 game.GameOverScreen = me.ScreenObject.extend({
     init: function() {
+        console.log('GameOverScreen : init');
+        GAME_SPEED = 0;
         this.savedData = null;
         this.handler = null;
     },
 
     onResetEvent: function() {
+        console.log('GameOverScreen : onResetEvent');
+
         //save section
         this.savedData = {
             score: game.data.score,
@@ -670,6 +857,8 @@ game.GameOverScreen = me.ScreenObject.extend({
     },
 
     onDestroyEvent: function() {
+        console.log('GameOverScreen : onDestroyEvent');
+
         // unregister the event
         me.event.unsubscribe(this.handler);
         me.input.unbindKey(me.input.KEY.ENTER);

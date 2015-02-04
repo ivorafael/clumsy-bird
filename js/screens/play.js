@@ -1,5 +1,6 @@
 game.PlayScreen = me.ScreenObject.extend({
     init: function() {
+        console.log('PlayScreen : init');
         me.audio.play("theme", true);
         // lower audio volume on firefox browser
         var vol = me.device.ua.contains("Firefox") ? 0.3 : 0.5;
@@ -8,6 +9,9 @@ game.PlayScreen = me.ScreenObject.extend({
     },
 
     onResetEvent: function() {
+        console.log('PlayScreen : onResetEvent');
+        GAME_SPEED = 0;
+
         me.game.reset();
         me.audio.stop("theme");
         if (!game.data.muted){
@@ -31,7 +35,7 @@ game.PlayScreen = me.ScreenObject.extend({
         this.HUD = new game.HUD.Container();
         me.game.world.addChild(this.HUD);
 
-        this.bird = me.pool.pull("clumsy", 60, me.game.viewport.height/2 - 100);
+        this.bird = me.pool.pull("capitain", 60, me.game.viewport.height/2 - 100);
         me.game.world.addChild(this.bird, 10);
 
         //inputs
@@ -55,6 +59,7 @@ game.PlayScreen = me.ScreenObject.extend({
     },
 
     onDestroyEvent: function() {
+        console.log('PlayScreen : onDestroyEvent');
         me.audio.stopTrack('theme');
         // free the stored instance
         this.HUD = null;

@@ -1,10 +1,14 @@
 game.GameOverScreen = me.ScreenObject.extend({
     init: function() {
+        console.log('GameOverScreen : init');
+        GAME_SPEED = 0;
         this.savedData = null;
         this.handler = null;
     },
 
     onResetEvent: function() {
+        console.log('GameOverScreen : onResetEvent');
+
         //save section
         this.savedData = {
             score: game.data.score,
@@ -109,6 +113,8 @@ game.GameOverScreen = me.ScreenObject.extend({
     },
 
     onDestroyEvent: function() {
+        console.log('GameOverScreen : onDestroyEvent');
+
         // unregister the event
         me.event.unsubscribe(this.handler);
         me.input.unbindKey(me.input.KEY.ENTER);

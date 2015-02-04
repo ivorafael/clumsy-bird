@@ -1,3 +1,6 @@
+var GAME_SPEED = 0;
+var CHAR_X = 0;
+
 var game = {
     data: {
         score : 0,
@@ -34,6 +37,7 @@ var game = {
         me.input.bindKey(me.input.KEY.M, "mute", true);
         me.input.bindPointer(me.input.KEY.SPACE);
 
+        me.pool.register("capitain", CapitainEntity);
         me.pool.register("clumsy", BirdEntity);
         me.pool.register("pipe", PipeEntity, true);
         me.pool.register("hit", HitEntity, true);

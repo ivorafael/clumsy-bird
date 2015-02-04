@@ -46,7 +46,6 @@ game.HUD.ScoreItem = me.Renderable.extend({
         if (game.data.start && me.state.isCurrent(me.state.PLAY))
             this.stepsFont.draw(context, game.data.steps, me.video.renderer.getWidth()/2, 10);
     }
-
 });
 
 var BackgroundLayer = me.ImageLayer.extend({

@@ -1,6 +1,8 @@
 game.resources = [
     // images
     {name: "bg", type:"image", src: "data/img/bg.png"},
+    {name: "spider", type:"image", src: "data/img/spider.png"},
+    {name: "capitain", type:"image", src: "data/img/capitain.png"},
     {name: "clumsy", type:"image", src: "data/img/clumsy.png"},
     {name: "pipe", type:"image", src: "data/img/pipe.png"},
     {name: "logo", type:"image", src: "data/img/logo.png"},

@@ -1,5 +1,6 @@
 game.TitleScreen = me.ScreenObject.extend({
     init: function(){
+        console.log('TitleScreen : init');
         this._super(me.ScreenObject, 'init');
         this.font = null;
         this.ground1 = null;
@@ -8,6 +9,7 @@ game.TitleScreen = me.ScreenObject.extend({
     },
 
     onResetEvent: function() {
+        console.log('TitleScreen : onResetEvent');
         me.audio.stop("theme");
         game.data.newHiScore = false;
 
@@ -62,6 +64,7 @@ game.TitleScreen = me.ScreenObject.extend({
     },
 
     onDestroyEvent: function() {
+        console.log('TitleScreen : onDestroyEvent');
         // unregister the event
         me.event.unsubscribe(this.handler);
         me.input.unbindKey(me.input.KEY.ENTER);
